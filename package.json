@@ -1,17 +1,29 @@
 {
-  "name": "d9e0bf8a",
+  "name": "xiaobai-recipe-assistant",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "厨艺小白的智能菜谱助手",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build:android": "npx cap copy android && cd android && ./gradlew assembleRelease",
+    "sync": "npx cap copy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["recipe", "cooking", "ai", "android"],
+  "author": "capacity2019",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "dotenv": "^18.0.2",
     "express": "^5.2.1"
   }

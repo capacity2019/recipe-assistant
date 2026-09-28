@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#4CAF50"/>
+
+  <!-- Plate -->
+  <circle cx="256" cy="280" r="140" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- Fork -->
+  <g transform="translate(180, 120)">
+    <rect x="0" y="0" width="8" height="120" fill="#FFFFFF" rx="4"/>
+    <rect x="-8" y="0" width="8" height="40" fill="#FFFFFF" rx="4"/>
+    <rect x="16" y="0" width="8" height="40" fill="#FFFFFF" rx="4"/>
+  </g>
+
+  <!-- Knife -->
+  <g transform="translate(320, 120)">
+    <rect x="0" y="0" width="8" height="120" fill="#FFFFFF" rx="4"/>
+    <path d="M 8 0 L 20 0 L 20 60 L 8 80 Z" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Steam/Heart -->
+  <path d="M 256 180 C 256 160, 236 150, 226 160 C 216 170, 216 180, 226 190 L 256 220 L 286 190 C 296 180, 296 170, 286 160 C 276 150, 256 160, 256 180 Z" fill="#FFFFFF" opacity="0.8"/>
+
+  <!-- Text -->
+  <text x="256" y="420" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#FFFFFF" text-anchor="middle">菜谱</text>
+</svg>

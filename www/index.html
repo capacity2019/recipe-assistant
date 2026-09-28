@@ -6,7 +6,15 @@
   <title>小白菜谱助手</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f5f5f5; padding: 20px; }
+    body {
+      font-family: -apple-system, "Microsoft YaHei", sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      padding-top: calc(20px + env(safe-area-inset-top));
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      padding-left: calc(20px + env(safe-area-inset-left));
+      padding-right: calc(20px + env(safe-area-inset-right));
+    }
     .container { max-width: 600px; margin: 0 auto; }
     h1 { text-align: center; margin-bottom: 24px; color: #333; }
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -91,11 +99,71 @@
     .error { background: #ffebee; color: #c62828; padding: 12px; border-radius: 8px; text-align: center; }
     .empty { text-align: center; padding: 40px; color: #999; }
     .hidden { display: none; }
+
+    /* Settings Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: #fff; border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .modal-content h2 { margin-bottom: 12px; color: #333; font-size: 20px; }
+    .modal-desc { color: #666; font-size: 14px; margin-bottom: 16px; line-height: 1.5; }
+    .modal-desc a { color: #4CAF50; text-decoration: none; }
+    .modal-input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+    .modal-input:focus { outline: none; border-color: #4CAF50; }
+    .modal-buttons { display: flex; gap: 12px; }
+    .modal-buttons button { flex: 1; padding: 12px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .btn-primary { background: #4CAF50; color: #fff; border: none; }
+    .btn-primary:hover { background: #45a049; }
+    .btn-secondary { background: #fff; color: #666; border: 1px solid #ddd; }
+    .btn-secondary:hover { background: #f5f5f5; }
+
+    /* Touch target improvements */
+    button, .tab, .tag, .category-btn, .servings-btn {
+      min-height: 44px;
+    }
+    .tag-remove {
+      min-width: 24px;
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(76, 175, 80, 0.3);
+      border-radius: 50%;
+      border-top-color: #4CAF50;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mobile optimizations */
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      .container { max-width: 100%; }
+      .recipe-header { flex-wrap: wrap; gap: 8px; }
+      .search-bar { flex-direction: column; }
+      .search-bar select { width: 100%; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>小白菜谱助手</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h1 style="margin:0;">小白菜谱助手</h1>
+      <button onclick="showSettingsModal()" style="padding:8px 16px;background:#fff;color:#4CAF50;border:1px solid #4CAF50;border-radius:6px;font-size:13px;cursor:pointer;">设置</button>
+    </div>
 
     <div class="tabs">
       <div class="tab active" onclick="switchTab('generate')">生成菜谱</div>
@@ -173,10 +241,22 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    import { getRecipes as fetchRecipes } from './js/api.js';
+    import { initDatabase, saveRecipe as dbSaveRecipe, getSavedRecipes, deleteRecipe as dbDeleteRecipe, togglePinRecipe, getCommonIngredients, addCommonIngredient as dbAddIngredient, deleteCommonIngredient as dbDeleteIngredient } from './js/db.js';
+    import { initSettings, showSettingsModal } from './js/settings.js';
+
     const seenRecipes = new Set();
     let currentServings = 2;
     let commonIngredients = [];
+
+    // Initialize app
+    (async () => {
+      await initDatabase();
+      await initSettings();
+      await loadCommonIngredients();
+      updateCartBadge();
+    })();
 
     function setServings(n, btn) {
       currentServings = n;
@@ -193,9 +273,7 @@
     }
 
     async function loadCommonIngredients() {
-      const res = await fetch('/api/ingredients');
-      const data = await res.json();
-      commonIngredients = data.ingredients;
+      commonIngredients = await getCommonIngredients();
       renderTags();
     }
 
@@ -228,23 +306,17 @@
       const input = document.getElementById('newIngredient');
       const name = input.value.trim();
       if (!name) return;
-      const res = await fetch('/api/ingredients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (data.added) {
-        commonIngredients = data.ingredients;
+      const result = await dbAddIngredient(name);
+      if (result.added) {
+        commonIngredients = await getCommonIngredients();
         renderTags();
       }
       input.value = '';
     }
 
     async function removeCommonIngredient(name) {
-      const res = await fetch(`/api/ingredients/${encodeURIComponent(name)}`, { method: 'DELETE' });
-      const data = await res.json();
-      commonIngredients = data.ingredients;
+      await dbDeleteIngredient(name);
+      commonIngredients = await getCommonIngredients();
       renderTags();
     }
 
@@ -259,8 +331,6 @@
       document.getElementById('ingredients').value = picked.join('、');
       getRecipes();
     }
-
-    loadCommonIngredients();
 
     function switchTab(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -303,23 +373,12 @@
 
       btn.disabled = true;
       btn.textContent = '生成中...';
-      resultsDiv.innerHTML = '<div class="loading">正在为你生成菜谱...</div>';
+      resultsDiv.innerHTML = '<div class="loading"><span class="spinner"></span>正在为你生成菜谱...</div>';
 
       try {
-        const res = await fetch('/api/recipes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ingredients, budget, exclude, servings: currentServings, category: currentCategory }),
-        });
+        const recipes = await fetchRecipes(ingredients, budget, exclude, currentServings, currentCategory);
 
-        const data = await res.json();
-
-        if (data.error) {
-          resultsDiv.innerHTML = `<div class="error">${data.error}</div>`;
-          return;
-        }
-
-        const newRecipes = data.recipes.filter(r => !seenRecipes.has(r.name));
+        const newRecipes = recipes.filter(r => !seenRecipes.has(r.name));
 
         if (newRecipes.length === 0) {
           resultsDiv.innerHTML = '<div class="empty">已经没有更多菜谱了，换个食材试试吧</div>';
@@ -348,7 +407,7 @@
 
         window._currentRecipes = newRecipes;
       } catch (err) {
-        resultsDiv.innerHTML = '<div class="error">网络错误，请重试</div>';
+        resultsDiv.innerHTML = `<div class="error">${err.message || '网络错误，请重试'}</div>`;
       } finally {
         btn.disabled = false;
         btn.textContent = '生成菜谱';
@@ -359,27 +418,22 @@
       const recipe = window._currentRecipes[index];
       const btn = document.getElementById(`saveBtn${index}`);
 
-      const res = await fetch('/api/recipes/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recipe),
-      });
-
-      const data = await res.json();
-      btn.textContent = data.saved ? '已收藏' : data.message;
+      const result = await dbSaveRecipe(recipe);
+      btn.textContent = result.saved ? '已收藏' : result.message;
       btn.classList.add('saved');
       btn.disabled = true;
     }
 
     async function deleteRecipe(encodedName, category) {
       if (!confirm('确定要删除这个菜谱吗？')) return;
-      const res = await fetch(`/api/recipes/saved/${category}/${encodedName}`, { method: 'DELETE' });
-      if (res.ok) loadSaved();
+      const name = decodeURIComponent(encodedName);
+      await dbDeleteRecipe(name, category);
+      loadSaved();
     }
 
     async function togglePin(encodedName, category, btn) {
-      const res = await fetch(`/api/recipes/pin/${category}/${encodedName}`, { method: 'POST' });
-      const data = await res.json();
+      const name = decodeURIComponent(encodedName);
+      await togglePinRecipe(name, category);
       loadSaved();
     }
 
@@ -492,19 +546,14 @@
       const category = document.getElementById('categoryFilter').value;
       const resultsDiv = document.getElementById('savedResults');
 
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (category) params.set('category', category);
+      const recipes = await getSavedRecipes(search, category);
 
-      const res = await fetch(`/api/recipes/saved?${params}`);
-      const data = await res.json();
-
-      if (data.recipes.length === 0) {
+      if (recipes.length === 0) {
         resultsDiv.innerHTML = '<div class="empty">还没有收藏的菜谱，去生成一个吧</div>';
         return;
       }
 
-      resultsDiv.innerHTML = data.recipes.map((r, i) => `
+      resultsDiv.innerHTML = recipes.map((r, i) => `
         <div class="recipe-card${r.pinned ? ' pinned-card' : ''}">
           <div class="recipe-header">
             <span class="recipe-name">${r.pinned ? '&#11088; ' : ''}${r.name}</span>
