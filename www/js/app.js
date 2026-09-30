@@ -35,7 +35,7 @@
   async function sqliteRun(database, statement, values) {
     var options = { database: database, statement: statement };
     if (values) options.values = values;
-    return nativeCall('CapacitorSQLite', 'run', options);
+    return nativeCall('CapacitorSQLite', 'execute', options);
   }
 
   async function sqliteQuery(database, statement, values) {
